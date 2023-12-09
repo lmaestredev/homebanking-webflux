@@ -1,0 +1,26 @@
+version: "3.9"
+services:
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+  homebanking-queue:
+    image: lmaestredev/homebanking-queue:latest
+    container_name: homebanking-queue
+    env_file:
+      - app.env
+    ports:
+      - "8087:8087"
+    links:
+      - rabbitmq
+  homebanking-webflux:
+    env_file:
+      - app.env
+    image: lmaestredev/homebanking-webflux:latest
+    container_name: homebanking-webflux
+    ports:
+      - "8086:8086"
+    links:
+      - rabbitmq
