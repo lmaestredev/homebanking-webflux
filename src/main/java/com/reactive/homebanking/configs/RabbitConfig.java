@@ -1,4 +1,4 @@
-package com.reactive.homebanking;
+package com.reactive.homebanking.configs;
 
 import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ConnectionFactory;
@@ -24,13 +24,26 @@ import java.security.NoSuchAlgorithmException;
 @Configuration
 public class RabbitConfig {
 
-    public static final String QUEUE_NAME = "transactions-queue";
-    public static final String QUEUE_NAME_ERROR = "error-queue";
-    public static final String EXCHANGE_NAME = "transactions-exchange";
-    public static final String ROUTING_KEY_NAME = "transactions.routing.key";
-    public static final String ROUTING_ERROR_KEY_NAME = "errors.routing.key";
     //public static final String URI_NAME = "amqp://guest:guest@rabbitmq:5672";
-    public static final String URI_NAME = "amqp://guest:guest@localhost:5672";
+    //public static final String URI_NAME = "amqp://guest:guest@localhost:5672";
+
+    @Value("${rabbitUri}")
+    public String URI_NAME;
+
+    @Value("${rabbitExchange}")
+    public String EXCHANGE_NAME;
+
+    //routers key (una por cada cola)
+    public static final String CLIENT_ROUTING_KEY = "clients.routing.key";
+    public static final String ACCOUNT_ROUTING_KEY = "accounts.routing.key";
+    public static final String TRANSACTION_ROUTING_KEY = "transactions.routing.key";
+    public static final String ERROR_ROUTING_KEY = "errors.routing.key";
+
+    //queues
+    public static final String CLIENT_QUEUE = "clients-queue";
+    public static final String ACCOUNT_QUEUE = "accounts-queue";
+    public static final String TRANSACTION_QUEUE = "transactions-queue";
+    public static final String ERROR_QUEUE = "error-queue";
 
     @Bean
     public AmqpAdmin amqpAdmin() {
@@ -38,15 +51,21 @@ public class RabbitConfig {
         var amqpAdmin =  new RabbitAdmin(connectionFactory);
 
         var exchange = new TopicExchange(EXCHANGE_NAME);
-        var queue = new Queue(QUEUE_NAME, true, false, false);
-        var errorQueue = new Queue(QUEUE_NAME_ERROR, true, false, false);
+        var clientQueue = new Queue(CLIENT_QUEUE, true, false, false);
+        var accountQueue = new Queue(ACCOUNT_QUEUE, true, false, false);
+        var transactionQueue = new Queue(TRANSACTION_QUEUE, true, false, false);
+        var errorQueue = new Queue(ERROR_QUEUE, true, false, false);
 
         amqpAdmin.declareExchange(exchange);
-        amqpAdmin.declareQueue(queue);
+        amqpAdmin.declareQueue(clientQueue);
+        amqpAdmin.declareQueue(accountQueue);
+        amqpAdmin.declareQueue(transactionQueue);
         amqpAdmin.declareQueue(errorQueue);
 
-        amqpAdmin.declareBinding(BindingBuilder.bind(queue).to(exchange).with(ROUTING_KEY_NAME));
-        amqpAdmin.declareBinding(BindingBuilder.bind(errorQueue).to(exchange).with(ROUTING_ERROR_KEY_NAME));
+        amqpAdmin.declareBinding(BindingBuilder.bind(clientQueue).to(exchange).with(CLIENT_ROUTING_KEY));
+        amqpAdmin.declareBinding(BindingBuilder.bind(accountQueue).to(exchange).with(ACCOUNT_ROUTING_KEY));
+        amqpAdmin.declareBinding(BindingBuilder.bind(transactionQueue).to(exchange).with(TRANSACTION_ROUTING_KEY));
+        amqpAdmin.declareBinding(BindingBuilder.bind(errorQueue).to(exchange).with(ERROR_ROUTING_KEY));
 
         return amqpAdmin;
     }

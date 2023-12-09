@@ -1,4 +1,4 @@
-package com.reactive.homebanking.handlers.routers;
+package com.reactive.homebanking.routers.routers;
 
 import com.reactive.homebanking.dtos.requestDtos.ClientDto;
 import com.reactive.homebanking.dtos.responseDtos.ClientResDto;

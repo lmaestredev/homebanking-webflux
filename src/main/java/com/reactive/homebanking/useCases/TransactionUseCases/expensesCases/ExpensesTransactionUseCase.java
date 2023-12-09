@@ -1,6 +1,8 @@
 package com.reactive.homebanking.useCases.TransactionUseCases.expensesCases;
 
+import com.reactive.homebanking.drivenAdapters.bus.RabbitMqPublisher;
 import com.reactive.homebanking.drivenAdapters.repositories.TransactionRepository;
+import com.reactive.homebanking.dtos.publisherDto.TransactionPublisherDto;
 import com.reactive.homebanking.dtos.requestDtos.TransactionDto;
 import com.reactive.homebanking.dtos.responseDtos.AccountResDto;
 import com.reactive.homebanking.dtos.responseDtos.TransactionResDto;
@@ -10,6 +12,7 @@ import com.reactive.homebanking.useCases.AccountUseCases.SaveAccountUseCase;
 import com.reactive.homebanking.useCases.TransactionUseCases.TransactionResource;
 import com.reactive.homebanking.utils.mappers.AccountMapper;
 import com.reactive.homebanking.utils.mappers.TransactionMapper;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
@@ -27,13 +30,17 @@ public class ExpensesTransactionUseCase implements TransactionResource {
     private final AccountMapper accountMapper;
     private final TransactionRepository transactionRepository;
     private final TransactionMapper transactionMapper;
+    private final RabbitMqPublisher rabbitMqPublisher;
 
-    public ExpensesTransactionUseCase(GetAccountByIdUseCase getAccountByIdUseCase, SaveAccountUseCase saveAccountUseCase, AccountMapper accountMapper, TransactionRepository transactionRepository, TransactionMapper transactionMapper) {
+
+    @Autowired
+    public ExpensesTransactionUseCase(GetAccountByIdUseCase getAccountByIdUseCase, SaveAccountUseCase saveAccountUseCase, AccountMapper accountMapper, TransactionRepository transactionRepository, TransactionMapper transactionMapper, RabbitMqPublisher rabbitMqPublisher) {
         this.getAccountByIdUseCase = getAccountByIdUseCase;
         this.saveAccountUseCase = saveAccountUseCase;
         this.accountMapper = accountMapper;
         this.transactionRepository = transactionRepository;
         this.transactionMapper = transactionMapper;
+        this.rabbitMqPublisher = rabbitMqPublisher;
     }
 
 
@@ -65,9 +72,18 @@ public class ExpensesTransactionUseCase implements TransactionResource {
                         .setCharge(CHARGE)
                         .build();
 
-                return transactionRepository.save(transaction).map(
-                        transactionMapper::entityToResDto
-                );
+                return transactionRepository.save(transaction).map(transaction1 -> {
+
+                    TransactionPublisherDto publisherDto = transactionMapper.entityToPublisher(transaction1);
+
+                    if(transaction1.getSenderAccount() != null){
+                        publisherDto.setSenderAccount(transaction1.getSenderAccount().toString());
+                    }
+                    publisherDto.setReceiverAccount(transaction1.getReceiverAccount().toString());
+                    rabbitMqPublisher.publishTransaction(publisherDto);
+
+                    return transactionMapper.entityToResDto(transaction1);
+                });
             });
         });
     }

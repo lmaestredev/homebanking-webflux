@@ -1,6 +1,8 @@
 package com.reactive.homebanking.useCases.TransactionUseCases.incomeCases;
 
+import com.reactive.homebanking.drivenAdapters.bus.RabbitMqPublisher;
 import com.reactive.homebanking.drivenAdapters.repositories.TransactionRepository;
+import com.reactive.homebanking.dtos.publisherDto.TransactionPublisherDto;
 import com.reactive.homebanking.dtos.requestDtos.TransactionDto;
 import com.reactive.homebanking.dtos.responseDtos.AccountResDto;
 import com.reactive.homebanking.dtos.responseDtos.TransactionResDto;
@@ -27,22 +29,24 @@ public class IncomeTransactionUseCase implements TransactionResource {
     private final AccountMapper accountMapper;
     private final TransactionRepository transactionRepository;
     private final TransactionMapper transactionMapper;
+    private final RabbitMqPublisher rabbitMqPublisher;
 
     @Autowired
-    public IncomeTransactionUseCase(GetAccountByIdUseCase getAccountByIdUseCase, SaveAccountUseCase saveAccountUseCase, AccountMapper accountMapper, TransactionRepository transactionRepository, TransactionMapper transactionMapper) {
+    public IncomeTransactionUseCase(GetAccountByIdUseCase getAccountByIdUseCase, SaveAccountUseCase saveAccountUseCase, AccountMapper accountMapper, TransactionRepository transactionRepository, TransactionMapper transactionMapper, RabbitMqPublisher rabbitMqPublisher) {
         this.getAccountByIdUseCase = getAccountByIdUseCase;
         this.saveAccountUseCase = saveAccountUseCase;
         this.accountMapper = accountMapper;
         this.transactionRepository = transactionRepository;
         this.transactionMapper = transactionMapper;
+        this.rabbitMqPublisher = rabbitMqPublisher;
     }
 
     @Override
     public Mono<TransactionResDto> apply(TransactionDto transactionDto) {
 
-        if(transactionDto.getType().equals("STORE")){
+        if (transactionDto.getType().equals("STORE")) {
             CHARGE = WITHOUT_CHARGE;
-        }else{
+        } else {
             CHARGE = ATM;
         }
 
@@ -59,14 +63,23 @@ public class IncomeTransactionUseCase implements TransactionResource {
             return saveAccountUseCase.saveAccount(receiver).flatMap(receiver1 -> {
 
                 Transaction transaction = new Transaction.Builder(
-                        accountMapper.resDtoToEntity(receiver1) , transactionDto.getAmount())
+                        accountMapper.resDtoToEntity(receiver1), transactionDto.getAmount())
                         .setCharge(CHARGE)
                         .setTransactionType(transactionDto.getType())
                         .build();
 
-                return transactionRepository.save(transaction).map(
-                        transactionMapper::entityToResDto
-                );
+                return transactionRepository.save(transaction).map(transaction1 -> {
+
+                    TransactionPublisherDto publisherDto = transactionMapper.entityToPublisher(transaction1);
+
+                    if (transaction1.getSenderAccount() != null) {
+                        publisherDto.setSenderAccount(transaction1.getSenderAccount().toString());
+                    }
+                    publisherDto.setReceiverAccount(transaction1.getReceiverAccount().toString());
+                    rabbitMqPublisher.publishTransaction(publisherDto);
+
+                    return transactionMapper.entityToResDto(transaction1);
+                });
             });
         });
     }

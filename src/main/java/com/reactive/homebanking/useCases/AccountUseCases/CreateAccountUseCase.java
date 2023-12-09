@@ -1,6 +1,8 @@
 package com.reactive.homebanking.useCases.AccountUseCases;
 
+import com.reactive.homebanking.drivenAdapters.bus.RabbitMqPublisher;
 import com.reactive.homebanking.drivenAdapters.repositories.AccountRepository;
+import com.reactive.homebanking.dtos.publisherDto.AccountPublisherDto;
 import com.reactive.homebanking.dtos.requestDtos.AccountDto;
 import com.reactive.homebanking.dtos.responseDtos.AccountResDto;
 import com.reactive.homebanking.dtos.responseDtos.ClientResDto;
@@ -19,13 +21,15 @@ public class CreateAccountUseCase{
     private final ClientMapper clientMapper;
     private final AccountRepository accountRepository;
     private final GetClienByIdUseCase getClienByIdUseCase;
+    private final RabbitMqPublisher rabbitMqPublisher;
 
     @Autowired
-    public CreateAccountUseCase(AccountMapper accountMapper, ClientMapper clientMapper, AccountRepository accountRepository, GetClienByIdUseCase getClienByIdUseCase) {
+    public CreateAccountUseCase(AccountMapper accountMapper, ClientMapper clientMapper, AccountRepository accountRepository, GetClienByIdUseCase getClienByIdUseCase, RabbitMqPublisher rabbitMqPublisher) {
         this.accountMapper = accountMapper;
         this.clientMapper = clientMapper;
         this.accountRepository = accountRepository;
         this.getClienByIdUseCase = getClienByIdUseCase;
+        this.rabbitMqPublisher = rabbitMqPublisher;
     }
 
     public Mono<AccountResDto> createAccount(AccountDto accountDto) {
@@ -37,10 +41,13 @@ public class CreateAccountUseCase{
             Account account = accountMapper.dtoToEntity(accountDto);
             account.setCliente(clientMapper.resDtoToEntity(clientResDto));
 
+            AccountPublisherDto publisherDto = accountMapper.entityToPublisher(account);
+            publisherDto.setCliente(account.getCliente().toString());
+            rabbitMqPublisher.publishAccount(publisherDto);
+
             return accountRepository.save(account).map(
                     accountMapper::entityToResDto
             );
-        } );
-
+        });
     }
 }

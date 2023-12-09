@@ -1,4 +1,4 @@
-package com.reactive.homebanking.drivenAdapters;
+package com.reactive.homebanking.configs;
 
 import com.reactive.homebanking.utils.mappers.AccountMapper;
 import com.reactive.homebanking.utils.mappers.ClientMapper;

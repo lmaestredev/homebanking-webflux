@@ -1,4 +1,4 @@
-package com.reactive.homebanking.handlers.routers;
+package com.reactive.homebanking.routers.routers;
 
 import com.reactive.homebanking.dtos.requestDtos.AccountDto;
 import com.reactive.homebanking.dtos.responseDtos.AccountResDto;
@@ -40,4 +40,11 @@ public class AccountRouter {
                         .contentType(MediaType.APPLICATION_JSON)
                         .body(BodyInserters.fromPublisher(getAllAccountUseCase.getAll(), AccountResDto.class)));
     }
+
+//    @Bean
+//    public RouterFunction<ServerResponse> getAccountByIdRouter(GetAccountByIdUseCase getAccountByIdRouter){
+//        final String uri = "/account/getById/{idAccount}";
+//
+//        return route(GET(uri), getAccountByIdRouter::getAccount);
+//    }
 }
