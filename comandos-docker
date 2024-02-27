@@ -1,0 +1,33 @@
+dataBaseName=webflux-grupal;
+
+mongoUri=mongodb+srv://lmaestre:lmaestre@cluster0.vmpnp9c.mongodb.net/?retryWrites\=true&w\=majority;
+
+portApp=8086;
+
+rabbitExchange=homebanking-exchange;
+
+rabbitUri=amqp://guest:guest@localhost:5672
+
+
+
+/////////////////////////////////////////////////////////
+
+dataBaseName=webflux-queue;
+
+mongoUri=mongodb+srv://lmaestre:lmaestre@cluster0.vmpnp9c.mongodb.net/?retryWrites\\=true&w\\=majority;
+
+portApp=8087;
+
+rabbitExchange=homebanking-exchange;
+
+rabbitUri=amqp://guest:guest@localhost:5672
+
+
+
+docker tag local-image:tagname new-repo:tagname
+docker push new-repo:tagname
+
+
+docker tag homebanking-webflux lmaestredev/homebanking-webflux
+docker push lmaestredev/homebanking-webflux
+docker-compose up
